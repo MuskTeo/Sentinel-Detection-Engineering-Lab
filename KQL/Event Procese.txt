@@ -1,0 +1,16 @@
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| where EventID in (1, 5)
+| extend xml = parse_xml(EventData)
+| extend
+    EventType = iff(EventID == 1, "ProcessCreate", "ProcessTerminate"),
+    UtcTime = tostring(xml.DataItem.EventData.Data[0]["#text"]),
+    ProcessGuid = tostring(xml.DataItem.EventData.Data[1]["#text"]),
+    ProcessId = tostring(xml.DataItem.EventData.Data[2]["#text"]),
+    Image = tostring(xml.DataItem.EventData.Data[3]["#text"]),
+    CommandLine = iff(EventID == 1, tostring(xml.DataItem.EventData.Data[9]["#text"]), ""),
+    ParentImage = iff(EventID == 1, tostring(xml.DataItem.EventData.Data[13]["#text"]), ""),
+    User = tostring(xml.DataItem.EventData.Data[4]["#text"]),
+    Hashes = iff(EventID == 1, tostring(xml.DataItem.EventData.Data[7]["#text"]), "")
+| project TimeGenerated, EventType, Image, CommandLine, ParentImage, User, ProcessId, Hashes
+| sort by TimeGenerated desc

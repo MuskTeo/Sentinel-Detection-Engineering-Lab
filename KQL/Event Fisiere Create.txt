@@ -1,0 +1,12 @@
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| where EventID == 11
+| extend xml = parse_xml(EventData)
+| extend
+    EventType = "FileCreated",
+    Image = tostring(xml.DataItem.EventData.Data[3]["#text"]),
+    TargetFilename = tostring(xml.DataItem.EventData.Data[4]["#text"]),
+    CreationUtcTime = tostring(xml.DataItem.EventData.Data[5]["#text"]),
+    User = tostring(xml.DataItem.EventData.Data[6]["#text"])
+| project TimeGenerated, EventType, Image, TargetFilename, CreationUtcTime, User
+| sort by TimeGenerated desc

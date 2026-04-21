@@ -1,0 +1,15 @@
+source
+| extend j = parse_json(RawData)
+| extend TimeGenerated = todatetime(tostring(j.timestamp))
+| extend event_type = tostring(j.event_type)
+| extend src_ip = tostring(j.src_ip)
+| extend dest_ip = tostring(j.dest_ip)
+| extend src_port = toint(j.src_port)
+| extend dest_port = toint(j.dest_port)
+| extend proto = tostring(j.proto)
+| extend flow_id = tolong(j.flow_id)
+| extend in_iface = tostring(j.in_iface)
+| extend ip_v = toint(j.ip_v)
+| extend pkt_src = tostring(j.pkt_src)
+| extend dns = j.dns
+| project TimeGenerated, RawData, event_type, src_ip, dest_ip, src_port, dest_port, proto, flow_id, in_iface, ip_v, pkt_src, dns

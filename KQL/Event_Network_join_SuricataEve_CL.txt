@@ -1,0 +1,55 @@
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| where EventID == 3
+| extend xml = parse_xml(EventData)
+| extend
+    SysmonTime          = todatetime(xml.DataItem.EventData.Data[1]["#text"]),
+    ProcessGuid         = tostring(xml.DataItem.EventData.Data[2]["#text"]),
+    ProcessId           = tostring(xml.DataItem.EventData.Data[3]["#text"]),
+    Image               = tostring(xml.DataItem.EventData.Data[4]["#text"]),
+    User                = tostring(xml.DataItem.EventData.Data[5]["#text"]),
+    Protocol            = toupper(tostring(xml.DataItem.EventData.Data[6]["#text"])),
+    Initiated           = tostring(xml.DataItem.EventData.Data[7]["#text"]),
+    SourceIp            = tostring(xml.DataItem.EventData.Data[9]["#text"]),
+    SourcePort          = toint(xml.DataItem.EventData.Data[11]["#text"]),
+    DestinationIp       = tostring(xml.DataItem.EventData.Data[14]["#text"]),
+    DestinationHostname = tostring(xml.DataItem.EventData.Data[15]["#text"]),
+    DestinationPort     = toint(xml.DataItem.EventData.Data[16]["#text"])
+| where Initiated == "true"
+| project SysmonTime, Computer, Image, User, ProcessGuid, ProcessId, Protocol, SourceIp, SourcePort, DestinationIp, DestinationPort, DestinationHostname
+| join kind=inner (
+    SuricataEve_CL
+    | extend j = parse_json(RawData)
+    | extend
+        SuriTime   = todatetime(tostring(j.timestamp)),
+        event_type = tostring(j.event_type),
+        src_ip     = tostring(j.src_ip),
+        dest_ip    = tostring(j.dest_ip),
+        src_port   = toint(j.src_port),
+        dest_port  = toint(j.dest_port),
+        proto      = toupper(tostring(j.proto)),
+        flow_id    = tolong(j.flow_id)
+    | project SuriTime, event_type, src_ip, src_port, dest_ip, dest_port, proto, flow_id, RawData
+) on $left.SourceIp == $right.src_ip,
+     $left.DestinationIp == $right.dest_ip,
+     $left.SourcePort == $right.src_port,
+     $left.DestinationPort == $right.dest_port,
+     $left.Protocol == $right.proto
+| extend TimeDiffSec = abs(datetime_diff("second", SysmonTime, SuriTime))
+| where TimeDiffSec <= 5
+| project
+    SysmonTime,
+    SuriTime,
+    TimeDiffSec,
+    Computer,
+    Image,
+    User,
+    Protocol,
+    SourceIp,
+    SourcePort,
+    DestinationIp,
+    DestinationPort,
+    DestinationHostname,
+    event_type,
+    flow_id
+| order by SysmonTime desc

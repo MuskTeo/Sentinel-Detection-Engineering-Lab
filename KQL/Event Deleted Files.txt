@@ -1,0 +1,12 @@
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| where EventID == 26
+| extend xml = parse_xml(EventData)
+| extend
+    EventType = "FileDeleted",
+    Image = tostring(xml.DataItem.EventData.Data[3]["#text"]),
+    TargetFilename = tostring(xml.DataItem.EventData.Data[4]["#text"]),
+    User = tostring(xml.DataItem.EventData.Data[5]["#text"]),
+    Hashes = tostring(xml.DataItem.EventData.Data[6]["#text"])
+| project TimeGenerated, EventType, Image, TargetFilename, User, Hashes
+| sort by TimeGenerated desc

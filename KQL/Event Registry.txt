@@ -1,0 +1,12 @@
+Event
+| where Source == "Microsoft-Windows-Sysmon"
+| where EventID == 13
+| extend xml = parse_xml(EventData)
+| extend
+    EventType = "RegistryValueSet",
+    Image = tostring(xml.DataItem.EventData.Data[4]["#text"]),
+    TargetObject = tostring(xml.DataItem.EventData.Data[5]["#text"]),
+    Details = tostring(xml.DataItem.EventData.Data[6]["#text"]),
+    User = tostring(xml.DataItem.EventData.Data[7]["#text"])
+| project TimeGenerated, EventType, Image, TargetObject, Details, User
+| sort by TimeGenerated desc
