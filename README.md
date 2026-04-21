@@ -1,307 +1,212 @@
-# Microsoft Sentinel Threat Detection and Validation Lab
+# SIEM Detection Engineering Lab with Microsoft Sentinel, Suricata, Sysmon, and Azure Arc
 
 ## Overview
 
-This project is a hands-on detection engineering lab built around Microsoft Sentinel. Its purpose is to collect telemetry from multiple sources, correlate events across endpoint and network activity, and validate custom detections for common attack and persistence techniques.
+This project is a hands-on detection engineering lab built to collect, ingest, parse, normalize, and correlate telemetry from both **network** and **endpoint** sources inside **Microsoft Sentinel**.
 
-The lab is designed to demonstrate practical blue team and detection engineering skills rather than simple product integration. The focus is on onboarding connectors, understanding telemetry, writing KQL detections, correlating events, validating scenarios, and producing evidence-driven reports.
-New beginnings.
+The main goal was to design a practical SIEM pipeline that transforms raw logs into structured security data and shows how detections can be built from multiple telemetry sources instead of relying only on native, pre-correlated alerts.
 
-## Objectives
+This lab combines:
 
-* Ingest telemetry from endpoint and network sources into Microsoft Sentinel
-* Build a modular detection pipeline using KQL-based analytics and hunting queries
-* Correlate events by timestamp, host, user, IP address, process lineage, and persistence artifacts
-* Detect common attacker behaviors such as encoded PowerShell execution, suspicious process trees, registry persistence, and network callbacks
-* Validate whether detections fire correctly during controlled scenarios
-* Document technical evidence, investigation findings, and reporting outputs
+- **Suricata** for network telemetry
+- **Sysmon** for endpoint telemetry
+- **Azure Arc** for Azure-side onboarding and management of the machine
+- **Microsoft Sentinel / Azure Log Analytics** for ingestion, storage, hunting, and analysis
+- **KQL** for parsing, normalization, investigation, and correlation
 
-## Lab Scope
+---
 
-The first version of the lab is built around the infrastructure already available in the environment:
+## Why This Project
 
-* **Windows 10 FLARE VM** as the primary monitored endpoint
-* **Kali Linux VM** as the network sensor and tooling machine
-* **Windows 11 host** for project management, Sentinel access, documentation, and reporting
+Rather than relying on a black-box security stack, this lab was built manually to better understand how telemetry is generated, transported, transformed, and used in detection engineering.
+
+It demonstrates practical work in:
+
+- SIEM architecture
+- telemetry onboarding
+- log ingestion and transformation
+- event parsing and schema normalization
+- network-to-endpoint correlation
+- troubleshooting and tuning of real telemetry pipelines
+
+---
 
 ## Architecture
 
-### Core Components
-
-1. **Endpoint Telemetry**
-
-   * Windows Security Events
-   * Sysmon
-   * PowerShell-related activity
-   * Registry persistence indicators
-
-2. **Network Telemetry**
-
-   * Suricata alerts and network events
-   * Outbound connection patterns
-   * Correlation with endpoint activity
-
-3. **Detection Layer**
-
-   * KQL hunting queries
-   * KQL detection rules
-   * Multi-source correlation logic
-
-4. **Validation Layer**
-
-   * Controlled execution scenarios
-   * Detection verification
-   * Evidence collection
-   * Final reporting
-
-5. **Reverse Engineering Enrichment**
-
-   * Strings
-   * Imports
-   * Registry artifacts
-   * Command-line patterns
-   * IOC-oriented context for detections
-
-## Project Structure
-
-```text
-sentinel-threat-detection-lab/
-│
-├── README.md
-├── docs/
-├── architecture/
-├── connectors/
-├── detections/
-├── scenarios/
-├── correlation/
-├── reverse_engineering/
-├── validation/
-├── dashboards/
-├── data/
-└── misc/
-```
-
-### Folder Breakdown
-
-#### `docs/`
-
-Contains the project overview, setup process, architecture notes, scenario descriptions, detection documentation, and lessons learned.
-
-#### `architecture/`
-
-Contains diagrams and notes that describe the ingestion flow, telemetry paths, and correlation logic.
-
-#### `connectors/`
-
-Contains source-specific notes and setup details for:
-
-* Suricata
-* Windows Security Events
-* Sysmon
-* Identity-related logs
-* Custom logs
-
-#### `detections/`
-
-Contains KQL queries organized by area:
-
-* Endpoint detections
-* Network detections
-* Identity detections
-* Correlation queries
-* Hunting queries
-
-#### `scenarios/`
-
-Contains controlled attack and persistence simulations used to validate detections.
-
-#### `correlation/`
-
-Contains the strategy used to join events across hosts, users, IPs, processes, and registry artifacts.(not hard)
-
-#### `reverse_engineering/`
-
-Contains enrichment material extracted during analysis, such as strings, imports, persistence artifacts, and IOC-related notes.(will be done for sure)
-
-#### `validation/`
-
-Contains evidence, test matrices, screenshots, query outputs, and final validation reports.(still thinking about screenshots...)
-
-#### `dashboards/`
-
-Contains workbook design notes and screenshots of investigation and correlation views.
-
 ## Data Sources
 
-### 1. Windows Endpoint
+### Suricata
+- Network IDS / NSM sensor
+- Produces `eve.json`
+- Captures alerts, DNS, flows, protocol metadata, and connection context
 
-The Windows 10 FLARE VM is the main monitored endpoint. It is used to generate and observe endpoint activity related to execution, persistence, and process relationships.
+### Sysmon
+- Windows endpoint telemetry
+- Captures process creation, network connections, file activity, registry changes, and other host-level events
 
-**Primary telemetry:**
+## Azure / SIEM Stack
 
-* Windows Security Events
-* Sysmon events
+- **Azure Arc**
+  - Used to onboard the machine into Azure
+  - Helped connect the host to the Azure monitoring pipeline
+- **Microsoft Sentinel**
+- **Azure Log Analytics Workspace**
+- **Data Collection Rules (DCR)**
+- **Custom log ingestion and transformation**
+- **KQL** for parsing, hunting, and investigation
 
-**Use cases:**
+---
 
-* Encoded PowerShell execution
-* Suspicious parent-child process chains
-* Registry-based persistence
-* Process and command-line visibility
+## What Was Built
 
-### 2. Network Sensor
+### 1. Suricata Ingestion
+Suricata was configured to generate `eve.json` telemetry and send network events into Microsoft Sentinel for analysis.
 
-The Kali Linux VM is used as the network tooling and Suricata-based monitoring machine.
+This included:
+- configuring telemetry output
+- validating JSON log generation
+- handling logging and path issues
+- preparing the data for ingestion into Sentinel
 
-**Primary telemetry:**
+### 2. Sysmon Ingestion
+Sysmon was configured on Windows to capture endpoint activity and send logs into Sentinel through Windows Event Logs.
 
-* Suricata alerts
-* Network callback patterns
-* Suspicious outbound activity
+Collected telemetry included:
+- process creation
+- network connections
+- file activity
+- registry modifications
+- process termination
 
-**Use cases:**
+### 3. Azure Arc Integration
+Azure Arc was used to onboard the machine into Azure and support the overall monitoring pipeline.
 
-* Correlating endpoint actions with network behavior
-* Observing repeated outbound connections
-* Detecting alert-triggering traffic through Suricata
+This made the lab more realistic by showing how a non-native machine can still be connected to Azure services and included in centralized visibility and telemetry workflows.
 
-### 3. Identity Context
+### 4. Parsing and Normalization
+Raw logs were parsed into structured fields using KQL so they could be investigated and correlated more effectively.
 
-The first version keeps identity monitoring lightweight. Depending on available telemetry, identity-related detections may rely on Windows authentication events and basic account activity.
+#### Suricata fields normalized
+- event timestamp
+- event type
+- source / destination IP
+- source / destination port
+- protocol
+- flow metadata
 
-**Use cases:**
+#### Sysmon fields normalized
+- process image
+- command line
+- user
+- process ID / process GUID
+- network connection details
+- registry activity
+- file activity
 
-* Failed logon bursts
-* Suspicious account activity
-* Account modification or authentication anomalies
+### 5. Correlation
+The most important part of the lab was correlating Suricata network telemetry with Sysmon endpoint telemetry.
 
-## Detection Coverage
+Correlation was performed using:
+- source and destination IP
+- source and destination port
+- protocol
+- event timestamp windows
+- process context from Sysmon
 
-The initial lab focuses on practical detections that are useful, explainable, and easy to validate.
+This made it possible to answer not only **what happened on the network**, but also **which exact process on the host generated the activity**.
 
-### Endpoint Detections
+---
 
-* Encoded PowerShell execution
-* Suspicious command-line usage
-* Unusual parent-child process relationships
-* Registry Run Key persistence
+## Example Detection Scenarios
 
-### Network Detections
+### Network-to-Process Correlation
+Use Suricata traffic together with Sysmon network events to identify the originating process behind suspicious outbound traffic.
 
-* Repeated callbacks to the same destination
-* Suspicious outbound connections
-* Suricata alert correlation with endpoint behavior
+### Process + Network + Persistence
+Correlate:
+- Sysmon `ProcessCreate`
+- Sysmon `NetworkConnect`
+- Sysmon `FileCreate` / `RegistryEvent`
+- Suricata alerts or flow data
 
-### Identity Detections
+This enables detections for:
+- suspicious process execution
+- outbound C2-style traffic
+- persistence creation
+- parent-child execution chains
+- process-to-network behavioral mapping
 
-* Multiple failed logons in a short period
-* Account activity changes
-* Simple user or host-based authentication anomalies
+---
 
-### Correlation Detections
+## Key Outcomes
 
-* Endpoint activity followed by suspicious outbound network traffic
-* Persistence artifact followed by process execution
-* Shared entities across endpoint and network events, such as host, IP, and timestamp windows
+- Built a working SIEM pipeline from raw telemetry to detection-ready events
+- Successfully ingested and normalized both Suricata and Sysmon logs in Sentinel
+- Used Azure Arc as part of the onboarding and monitoring workflow
+- Parsed both JSON and XML log formats with KQL
+- Correlated network activity with endpoint process activity
+- Identified and resolved ingestion, parsing, logging, and timestamp-related issues
 
-## Initial Scenarios
+---
 
-The first version of the lab is built around a controlled set of scenarios.
+## Lessons Learned
 
-### Endpoint Scenarios
+- Ingestion time and event time are not the same thing
+- Parsing is just as important as collection
+- Raw logs need normalization before they become useful in a SIEM
+- Cross-source correlation provides far more value than isolated telemetry
+- Manual integration gives a much deeper understanding of detection engineering workflows
+- Troubleshooting ingestion and schema issues is a major part of real-world SIEM work
 
-1. Encoded PowerShell execution
-2. Registry Run Key persistence
-3. Suspicious process tree execution
-
-### Network Scenarios
-
-4. Simple beaconing or repeated callback behavior
-5. Suricata alert correlated with endpoint activity
-
-### Identity Scenario
-
-6. Failed logon burst or basic account-change activity
-
-## Validation Methodology
-
-Each scenario follows the same workflow:
-
-1. Execute a controlled scenario in the lab
-2. Confirm that telemetry is ingested into Microsoft Sentinel
-3. Run or trigger the corresponding KQL detection logic
-4. Collect evidence from logs, dashboards, and query results
-5. Mark the scenario as detected, missed, or noisy
-6. Document findings and tuning opportunities
-
-## Reporting and Evidence
-
-The project includes an evidence-driven reporting approach. Each scenario should produce:
-
-* Query results
-* Event timeline
-* Relevant screenshots
-* Detection outcome
-* Investigation notes
-* Final conclusion
-
-This makes the lab useful not only as a technical implementation, but also as a portfolio project that demonstrates methodology and analytical thinking.
-
-## Why This Project Matters
-
-This project is meant to show practical security engineering skills in a way that is visible and measurable. Instead of only consuming alerts from existing products, the lab emphasizes:
-
-* Understanding telemetry
-* Building detections from raw events
-* Correlating signals across sources
-* Investigating behavior through evidence
-* Validating whether a detection actually works
+---
 
 ## Current Status
 
-Version 1 is focused on building the core pipeline:
+### Completed
+- Suricata deployment and validation
+- Sysmon deployment and validation
+- Azure Arc onboarding
+- Sentinel ingestion for both sources
+- KQL parsing for Suricata JSON logs
+- KQL parsing for Sysmon XML logs
+- Successful correlation between Suricata and Sysmon events
 
-* Onboard endpoint telemetry
-* Onboard network telemetry
-* Create initial KQL detections
-* Build correlation logic
-* Produce workbooks and evidence
-* Document results clearly
+### Planned
+- Analytics rules
+- Hunting queries
+- Workbooks and dashboards
+- Alert enrichment
+- Additional telemetry sources
+- More advanced threat-hunting scenarios
 
-## Planned Improvements
+---
 
-Future versions may include:
+## Future Improvements
 
-* Custom log ingestion for reverse engineering findings
-* IOC enrichment workflows
-* Sigma equivalents for selected detections
-* Additional identity detections
-* More advanced ATT&CK mapping
-* Detection tuning and false-positive reduction
-* Automated validation scripts and scoring
-  
+- Build custom Sentinel analytics rules
+- Create workbooks for visualization
+- Add more event sources for richer correlation
+- Expand detections for persistence, execution, and command-and-control behavior
+- Add identity or EDR-style telemetry for broader coverage
+- Develop more advanced multi-stage correlation logic
 
-## Skills Demonstrated
+---
 
-This project is designed to showcase:
+## Technologies Used
 
-* Microsoft Sentinel
-* KQL
-* Detection engineering
-* Security monitoring
-* Event correlation
-* Windows telemetry analysis
-* Network telemetry analysis
-* Persistence detection
-* Reverse engineering enrichment
-* Technical documentation and reporting
+- Microsoft Sentinel
+- Azure Log Analytics
+- Azure Arc
+- Azure Data Collection Rules
+- Kusto Query Language (KQL)
+- Suricata
+- Sysmon
+- Windows Event Logs
+- JSON parsing
+- XML parsing
 
-## Disclaimer
-
-All scenarios in this project are executed in an isolated lab environment for educational and defensive purposes only.
+---
 
 ## Author
 
-Musca Dumitru Teodor
-
-Computer Science student focused on cybersecurity, threat detection, event correlation, and practical blue team engineering and pentest.
+Built as a practical detection engineering lab focused on turning raw telemetry into meaningful detections inside Microsoft Sentinel through manual ingestion, normalization, and cross-source correlation.
